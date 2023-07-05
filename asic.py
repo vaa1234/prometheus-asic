@@ -98,7 +98,7 @@ async def collect(ip_range):
         # concatenate two dicts
         status_labels = base_labels | \
                         {'power_mode': properties['summary']['SUMMARY'][0]['Power Mode'],
-                        'error_code': ' '.join(properties['error_code']['Msg']['error_code']),
+                        'error_code': str(properties['error_code']['Msg']['error_code']),
                         'status': miner_status
                         }
         
@@ -114,7 +114,7 @@ async def collect(ip_range):
         miner_status_ths_rt = round(properties['summary']['SUMMARY'][0]['HS RT'] / 1000000, 2)
         miner_status_power = properties['summary']['SUMMARY'][0]['Power']
         miner_status_power_limit = properties['summary']['SUMMARY'][0]['Power Limit']
-        miner_status_efficiency = miner_status_power / miner_status_ths_rt
+        miner_status_efficiency = (miner_status_power / miner_status_ths_rt) if miner_status_ths_rt > 0 else 0
         miner_status_input_voltage = int(properties['psu']['Msg']['vin']) / 100
 
         add_metric('miner_status', status_labels, 1) 
