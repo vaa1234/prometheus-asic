@@ -1,0 +1,10 @@
+version: '3'
+services:
+  prometheus_asic-exporter:
+    image: vaa12345/prometheus-asic:0.1
+    container_name: prometheus_asic-exporter
+    environment:
+       - ASIC_IP_RANGE=192.168.2.1-192.168.2.254
+    ports:
+      - "127.0.0.1:9904:9904"
+    restart: unless-stopped
