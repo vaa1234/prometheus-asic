@@ -132,21 +132,27 @@ async def collect(ip_range):
         miner_temperature_avg_temperature = properties['summary']['SUMMARY'][0]['Temperature']
         miner_temperature_psu_temperature = properties['psu']['Msg']['temp0']
         miner_temperature_left_board_temperature = properties['devs']['DEVS'][0]['Temperature']
-        miner_temperature_left_board_chip_temperature = properties['devs']['DEVS'][0]['Temperature']
+        miner_temperature_left_board_chip_avg_temperature = properties['devs']['DEVS'][0]['Chip Temp Avg']
         miner_temperature_center_board_temperature = properties['devs']['DEVS'][1]['Temperature']
-        miner_temperature_center_board_chip_temperature = properties['devs']['DEVS'][1]['Chip Temp Avg']
+        miner_temperature_center_board_chip_avg_temperature = properties['devs']['DEVS'][1]['Chip Temp Avg']
         miner_temperature_right_board_temperature = properties['devs']['DEVS'][2]['Temperature']
-        miner_temperature_right_board_chip_temperature = properties['devs']['DEVS'][2]['Chip Temp Avg']
+        miner_temperature_right_board_chip_avg_temperature = properties['devs']['DEVS'][2]['Chip Temp Avg']
+        miner_temperature_chip_min = properties['summary']['SUMMARY'][0]['Chip Temp Min']
+        miner_temperature_chip_max = properties['summary']['SUMMARY'][0]['Chip Temp Max']
+        miner_temperature_chip_avg = properties['summary']['SUMMARY'][0]['Chip Temp Avg']
 
         add_metric('miner_temperature_env_temperature', base_labels, miner_temperature_env_temperature)
         add_metric('miner_temperature_avg_temperature', base_labels, miner_temperature_avg_temperature)
         add_metric('miner_temperature_psu_temperature', base_labels, miner_temperature_psu_temperature)
         add_metric('miner_temperature_left_board_temperature', base_labels, miner_temperature_left_board_temperature)
-        add_metric('miner_temperature_left_board_chip_temperature', base_labels, miner_temperature_left_board_chip_temperature)
+        add_metric('miner_temperature_left_board_chip_avg_temperature', base_labels, miner_temperature_left_board_chip_avg_temperature)
         add_metric('miner_temperature_center_board_temperature', base_labels, miner_temperature_center_board_temperature)
-        add_metric('miner_temperature_center_board_chip_temperature', base_labels, miner_temperature_center_board_chip_temperature)
+        add_metric('miner_temperature_center_board_avg_chip_temperature', base_labels, miner_temperature_center_board_chip_avg_temperature)
         add_metric('miner_temperature_right_board_temperature', base_labels, miner_temperature_right_board_temperature)
-        add_metric('miner_temperature_right_board_chip_temperature', base_labels, miner_temperature_right_board_chip_temperature)
+        add_metric('miner_temperature_right_board_avg_chip_temperature', base_labels, miner_temperature_right_board_chip_avg_temperature)
+        add_metric('miner_temperature_chip_min', base_labels, miner_temperature_chip_min)
+        add_metric('miner_temperature_chip_max', base_labels, miner_temperature_chip_max)
+        add_metric('miner_temperature_chip_avg', base_labels, miner_temperature_chip_avg)
 
         ### miner fans block ###
         miner_fans_fan_speed_in = properties['summary']['SUMMARY'][0]['Fan Speed In']
