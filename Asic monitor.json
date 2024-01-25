@@ -15,7 +15,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "9.2.3"
+      "version": "10.2.2"
     },
     {
       "type": "datasource",
@@ -76,7 +76,6 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -84,98 +83,167 @@
           },
           "custom": {
             "align": "auto",
-            "displayMode": "auto",
-            "filterable": false,
+            "cellOptions": {
+              "type": "auto"
+            },
             "inspect": false
           },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "index": 1,
-                  "text": "ERROR"
-                },
-                "1": {
-                  "index": 2,
-                  "text": "OK"
-                },
-                "-1": {
-                  "index": 0,
-                  "text": "UNKNOWN"
-                }
-              },
-              "type": "value"
-            }
-          ],
+          "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "green",
                 "value": null
               },
               {
                 "color": "red",
-                "value": 0
-              },
-              {
-                "color": "green",
-                "value": 1
+                "value": 80
               }
             ]
-          },
-          "unit": "none"
+          }
         },
         "overrides": [
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "health"
+              "id": "byName",
+              "options": "Availability"
             },
             "properties": [
               {
-                "id": "custom.displayMode",
-                "value": "color-background"
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 125
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "0": {
+                        "color": "red",
+                        "index": 1,
+                        "text": "Offline"
+                      },
+                      "1": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "Online"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "model_name"
+              "options": "IP"
             },
             "properties": [
               {
                 "id": "custom.width",
-                "value": 146
+                "value": 154
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "serial_number"
+              "options": "mac"
             },
             "properties": [
               {
                 "id": "custom.width",
-                "value": 302
+                "value": 180
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Model name"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 151
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Firmware version"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 198
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Location"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 303
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 219
               }
             ]
           }
         ]
       },
       "gridPos": {
-        "h": 7,
+        "h": 8,
         "w": 24,
         "x": 0,
         "y": 0
       },
-      "id": 2,
-      "links": [],
-      "maxDataPoints": 100,
+      "id": 27,
       "options": {
+        "cellHeight": "sm",
         "footer": {
+          "countRows": false,
           "fields": "",
           "reducer": [
             "sum"
@@ -186,8 +254,27 @@
         "showHeader": true,
         "sortBy": []
       },
-      "pluginVersion": "9.2.3",
+      "pluginVersion": "10.2.2",
       "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "asic_miner_info",
+          "format": "table",
+          "fullMetaSearch": false,
+          "hide": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "legendFormat": "",
+          "range": false,
+          "refId": "A",
+          "useBackend": false
+        },
         {
           "datasource": {
             "type": "prometheus",
@@ -195,12 +282,13 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "asic_miner_info{}",
+          "expr": "asic_miner_availability",
           "format": "table",
-          "instant": false,
+          "hide": false,
+          "instant": true,
           "legendFormat": "",
-          "range": true,
-          "refId": "A"
+          "range": false,
+          "refId": "B"
         }
       ],
       "title": "Miners info",
@@ -209,53 +297,194 @@
           "id": "groupBy",
           "options": {
             "fields": {
-              "firmware_version": {
-                "aggregations": [],
-                "operation": "groupby"
+              "Value #A": {
+                "aggregations": [
+                  "last"
+                ]
               },
-              "instance": {
-                "aggregations": []
+              "Value #B": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
+              },
+              "availability": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
+              },
+              "firmware_version": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
               },
               "ip": {
-                "aggregations": [],
+                "aggregations": [
+                  "last"
+                ],
                 "operation": "groupby"
               },
               "job": {
-                "aggregations": [],
-                "operation": "groupby"
+                "aggregations": [
+                  "last"
+                ]
+              },
+              "location": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
+              },
+              "location_name": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
               },
               "mac": {
-                "aggregations": [],
-                "operation": "groupby"
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
               },
               "model_name": {
-                "aggregations": [],
-                "operation": "groupby"
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
               },
               "serial_number": {
-                "aggregations": [],
-                "operation": "groupby"
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
               }
             }
           }
+        },
+        {
+          "id": "merge",
+          "options": {}
         },
         {
           "id": "organize",
           "options": {
             "excludeByName": {},
             "indexByName": {
-              "firmware_version": 5,
+              "Value #B (last)": 2,
+              "firmware_version (last)": 5,
               "ip": 1,
-              "job": 0,
-              "mac": 2,
-              "model_name": 3,
-              "serial_number": 4
+              "location (last)": 0,
+              "mac (last)": 3,
+              "model_name (last)": 4,
+              "serial_number (last)": 6
             },
-            "renameByName": {}
+            "renameByName": {
+              "Value #A (last)": "Availability",
+              "Value #B (last)": "Availability",
+              "availability (last)": "Availability",
+              "firmware_version (last)": "Firmware version",
+              "ip": "IP",
+              "ip (last)": "IP",
+              "job (last)": "Job (location name)",
+              "location (last)": "Location",
+              "location_name (last)": "Location name",
+              "mac": "",
+              "mac (last)": "mac",
+              "model_name (last)": "Model name",
+              "serial_number (last)": "Serial number"
+            }
           }
         }
       ],
       "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 5,
+        "x": 0,
+        "y": 8
+      },
+      "id": 22,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.2.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count(asic_miner_availability{} == 1)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Devices online",
+      "transformations": [
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "Value": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
+              }
+            }
+          }
+        }
+      ],
+      "type": "stat"
     },
     {
       "datasource": {
@@ -276,7 +505,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "unit": "THs"
         },
         "overrides": [
           {
@@ -296,8 +526,8 @@
       "gridPos": {
         "h": 3,
         "w": 5,
-        "x": 0,
-        "y": 7
+        "x": 5,
+        "y": 8
       },
       "id": 4,
       "options": {
@@ -307,14 +537,16 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "last"
           ],
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "text": {},
+        "textMode": "value",
+        "wideLayout": true
       },
-      "pluginVersion": "9.2.3",
+      "pluginVersion": "10.2.2",
       "targets": [
         {
           "datasource": {
@@ -322,13 +554,17 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum(asic_miner_status_ths_rt{})",
+          "exemplar": false,
+          "expr": "sum(asic_miner_status_ths_rt{} / 1000000)",
+          "format": "time_series",
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A"
         }
       ],
       "title": "Total hashrate",
+      "transformations": [],
       "type": "stat"
     },
     {
@@ -350,7 +586,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "unit": "watt"
         },
         "overrides": [
           {
@@ -370,8 +607,8 @@
       "gridPos": {
         "h": 3,
         "w": 5,
-        "x": 5,
-        "y": 7
+        "x": 10,
+        "y": 8
       },
       "id": 6,
       "options": {
@@ -381,14 +618,15 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "last"
           ],
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.2.3",
+      "pluginVersion": "10.2.2",
       "targets": [
         {
           "datasource": {
@@ -396,13 +634,126 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
+          "exemplar": false,
           "expr": "sum(asic_miner_status_power{})",
+          "format": "table",
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
+          "range": false,
           "refId": "A"
         }
       ],
       "title": "Total power",
+      "transformations": [
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "sum(asic_miner_status_power{})": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
+              }
+            }
+          }
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "W/TH"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sum(asic_miner_status_power{})"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "watt"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 5,
+        "x": 15,
+        "y": 8
+      },
+      "id": 28,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.2.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(asic_miner_status_power{}) / (sum(asic_miner_status_ths_rt) / 1000000)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Efficiency",
+      "transformations": [
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "sum(asic_miner_status_power{})": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
+              }
+            }
+          }
+        }
+      ],
       "type": "stat"
     },
     {
@@ -418,7 +769,9 @@
           },
           "custom": {
             "align": "auto",
-            "displayMode": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
             "filterable": false,
             "inspect": false
           },
@@ -444,6 +797,10 @@
               {
                 "id": "unit",
                 "value": "dtdhms"
+              },
+              {
+                "id": "custom.width",
+                "value": 123
               }
             ]
           },
@@ -456,6 +813,10 @@
               {
                 "id": "unit",
                 "value": "dtdhms"
+              },
+              {
+                "id": "custom.width",
+                "value": 117
               }
             ]
           },
@@ -467,7 +828,7 @@
             "properties": [
               {
                 "id": "decimals",
-                "value": 2
+                "value": 1
               },
               {
                 "id": "unit",
@@ -491,7 +852,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 116
+                "value": 107
               }
             ]
           },
@@ -507,7 +868,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 135
+                "value": 120
               }
             ]
           },
@@ -543,7 +904,7 @@
               },
               {
                 "id": "custom.width",
-                "value": 132
+                "value": 104
               }
             ]
           },
@@ -563,19 +924,46 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
+                      "color": "transparent",
                       "value": null
-                    },
-                    {
-                      "color": "green",
-                      "value": ""
                     }
                   ]
                 }
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background-solid"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "Alive": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "nan": {
+                        "color": "transparent",
+                        "index": 2
+                      }
+                    },
+                    "type": "value"
+                  },
+                  {
+                    "options": {
+                      "pattern": "(?!.*Alive)^.*$",
+                      "result": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    },
+                    "type": "regex"
+                  }
+                ]
               }
             ]
           },
@@ -587,7 +975,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 112
+                "value": 101
               }
             ]
           },
@@ -620,8 +1008,67 @@
                 ]
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background-solid"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#00000000",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 0
+                    },
+                    {
+                      "color": "green",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error_code (lastNotNull)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 226
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error_code (last)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 186
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Error codes"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 237
               }
             ]
           }
@@ -631,13 +1078,15 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 10
+        "y": 11
       },
       "id": 12,
       "links": [],
       "maxDataPoints": 100,
       "options": {
+        "cellHeight": "sm",
         "footer": {
+          "countRows": false,
           "enablePagination": false,
           "fields": "",
           "reducer": [
@@ -649,7 +1098,7 @@
         "showHeader": true,
         "sortBy": []
       },
-      "pluginVersion": "9.2.3",
+      "pluginVersion": "10.2.2",
       "targets": [
         {
           "datasource": {
@@ -734,7 +1183,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "asic_miner_status_ths_rt{}",
+          "expr": "asic_miner_status_ths_rt{} / 1000000",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -764,13 +1213,13 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "asic_miner_status_efficiency{}",
+          "expr": "asic_miner_status_input_voltage{} / 100",
           "format": "table",
           "hide": false,
           "instant": true,
           "legendFormat": "__auto",
           "range": false,
-          "refId": "H"
+          "refId": "I"
         },
         {
           "datasource": {
@@ -779,21 +1228,17 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "asic_miner_status_input_voltage{}",
+          "expr": "asic_miner_status_power{} / (asic_miner_status_ths_rt{} / 1000000)",
           "format": "table",
           "hide": false,
           "instant": true,
           "legendFormat": "__auto",
           "range": false,
-          "refId": "I"
+          "refId": "J"
         }
       ],
       "title": "Miner status",
       "transformations": [
-        {
-          "id": "merge",
-          "options": {}
-        },
         {
           "id": "groupBy",
           "options": {
@@ -805,49 +1250,55 @@
               },
               "Value #B": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #C": {
                 "aggregations": [
-                  "sum"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #D": {
                 "aggregations": [
-                  "sum"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #E": {
                 "aggregations": [
-                  "sum"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #F": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #G": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #H": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #I": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
+                ],
+                "operation": "aggregate"
+              },
+              "Value #J": {
+                "aggregations": [
+                  "last"
                 ],
                 "operation": "aggregate"
               },
@@ -861,6 +1312,12 @@
                 ],
                 "operation": "aggregate"
               },
+              "error_code": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
+              },
               "instance": {
                 "aggregations": []
               },
@@ -870,13 +1327,13 @@
               },
               "power_mode": {
                 "aggregations": [
-                  "firstNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "status": {
                 "aggregations": [
-                  "first"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
@@ -890,45 +1347,144 @@
           }
         },
         {
+          "id": "merge",
+          "options": {}
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {},
             "indexByName": {
-              "Value #B (lastNotNull)": 6,
-              "Value #C (sum)": 2,
-              "Value #D (sum)": 3,
-              "Value #E (sum)": 4,
-              "Value #F (lastNotNull)": 5,
-              "Value #G (lastNotNull)": 7,
-              "Value #H (lastNotNull)": 8,
-              "Value #I (lastNotNull)": 10,
+              "Value #B (last)": 7,
+              "Value #C (last)": 3,
+              "Value #D (last)": 4,
+              "Value #E (last)": 5,
+              "Value #F (last)": 6,
+              "Value #G (last)": 8,
+              "Value #I (last)": 11,
+              "Value #J (last)": 10,
+              "error_code (last)": 2,
               "ip": 0,
-              "power_mode (firstNotNull)": 9,
-              "status (first)": 1
+              "power_mode (last)": 9,
+              "status (last)": 1
             },
             "renameByName": {
-              "Value #A (allValues)": "",
-              "Value #A (sum)": "Status",
               "Value #B (last)": "Current power",
-              "Value #B (lastNotNull)": "Current power",
-              "Value #B (sum)": "Current power",
-              "Value #C (sum)": "Uptime",
-              "Value #D (sum)": "Elapsed time",
-              "Value #E (sum)": "Upfreq",
-              "Value #F (lastNotNull)": "Hashrate",
-              "Value #G (firstNotNull)": "Power limit",
-              "Value #G (lastNotNull)": "Power limit",
-              "Value #H (lastNotNull)": "Efficiency",
-              "Value #I (lastNotNull)": "Input voltage",
-              "elapsed_time (firstNotNull)": "Elapsed time",
-              "power_mode (firstNotNull)": "Power mode",
-              "status (first)": "Status",
-              "uptime (firstNotNull)": "Uptime"
+              "Value #C (last)": "Uptime",
+              "Value #D (last)": "Elapsed time",
+              "Value #E (last)": "Upfreq",
+              "Value #F (last)": "Hashrate",
+              "Value #G (last)": "Power limit",
+              "Value #H (last)": "Efficiency",
+              "Value #I (last)": "Input voltage",
+              "Value #J (last)": "Efficiency",
+              "error_code (last)": "Error codes",
+              "power_mode (last)": "Power mode",
+              "status (last)": "Status"
             }
           }
         }
       ],
       "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "THs"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "id": 26,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "asic_miner_status_ths_rt / 1000000",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "{{ip}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Realtime hashrate",
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -943,9 +1499,12 @@
           },
           "custom": {
             "align": "auto",
-            "displayMode": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
             "inspect": false
           },
+          "decimals": 1,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -975,16 +1534,12 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
+                      "color": "blue",
                       "value": null
                     },
                     {
-                      "color": "blue",
-                      "value": 5
-                    },
-                    {
                       "color": "green",
-                      "value": 10
+                      "value": 5
                     },
                     {
                       "color": "yellow",
@@ -1002,8 +1557,11 @@
                 }
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background-solid"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
               }
             ]
           },
@@ -1038,8 +1596,11 @@
                 }
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background-solid"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
               }
             ]
           },
@@ -1086,8 +1647,11 @@
                 }
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background-solid"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
               }
             ]
           },
@@ -1122,8 +1686,11 @@
                 }
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background-solid"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
               }
             ]
           },
@@ -1158,8 +1725,11 @@
                 }
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background-solid"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
               }
             ]
           },
@@ -1190,8 +1760,11 @@
                 }
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background-solid"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
               }
             ]
           },
@@ -1222,8 +1795,11 @@
                 }
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background-solid"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
               }
             ]
           },
@@ -1254,8 +1830,58 @@
                 }
               },
               {
-                "id": "custom.displayMode",
-                "value": "color-background-solid"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chip max"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 105
+                    },
+                    {
+                      "color": "red",
+                      "value": 115
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Chip avg"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 141
               }
             ]
           }
@@ -1265,11 +1891,13 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 17
+        "y": 26
       },
       "id": 14,
       "options": {
+        "cellHeight": "sm",
         "footer": {
+          "countRows": false,
           "fields": "",
           "reducer": [
             "sum"
@@ -1279,7 +1907,7 @@
         "showHeader": true,
         "sortBy": []
       },
-      "pluginVersion": "9.2.3",
+      "pluginVersion": "10.2.2",
       "targets": [
         {
           "datasource": {
@@ -1414,14 +2042,55 @@
           "legendFormat": "__auto",
           "range": false,
           "refId": "I"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "asic_miner_temperature_chip_max",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "J"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "asic_miner_temperature_chip_min",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "K"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "asic_miner_temperature_chip_avg",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "L"
         }
       ],
       "title": "Temperatures",
       "transformations": [
-        {
-          "id": "merge",
-          "options": {}
-        },
         {
           "id": "groupBy",
           "options": {
@@ -1431,55 +2100,73 @@
               },
               "Value #A": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #B": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #C": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #D": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #E": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #F": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #G": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #H": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #I": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
+                ],
+                "operation": "aggregate"
+              },
+              "Value #J": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
+              },
+              "Value #K": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
+              },
+              "Value #L": {
+                "aggregations": [
+                  "last"
                 ],
                 "operation": "aggregate"
               },
@@ -1491,22 +2178,46 @@
           }
         },
         {
+          "id": "merge",
+          "options": {}
+        },
+        {
           "id": "organize",
           "options": {
-            "excludeByName": {},
+            "excludeByName": {
+              "Value #E (lastNotNull)": true,
+              "Value #G (lastNotNull)": true,
+              "Value #I (lastNotNull)": true
+            },
             "indexByName": {},
             "renameByName": {
               "Value #A (firstNotNull)": "Environment",
+              "Value #A (last)": "Inlet air",
               "Value #A (lastNotNull)": "Inlet air",
               "Value #B (firstNotNull)": "Air outlet",
+              "Value #B (last)": "Miner average",
               "Value #B (lastNotNull)": "Miner average",
+              "Value #C (last)": "PSU",
               "Value #C (lastNotNull)": "PSU",
+              "Value #D (last)": "Left board",
               "Value #D (lastNotNull)": "Left board",
+              "Value #E (last)": "Left board chip",
               "Value #E (lastNotNull)": "Left board chip",
+              "Value #F (last)": "Center board",
               "Value #F (lastNotNull)": "Center board",
+              "Value #G (last)": "Center board chip",
               "Value #G (lastNotNull)": "Center board chip",
+              "Value #H (last)": "Right board",
               "Value #H (lastNotNull)": "Right board",
-              "Value #I (lastNotNull)": "Right board chip"
+              "Value #I (last)": "Right board chip",
+              "Value #I (lastNotNull)": "Right board chip",
+              "Value #J (last)": "Chip max",
+              "Value #J (lastNotNull)": "Chip max",
+              "Value #K (last)": "Chip min",
+              "Value #K (lastNotNull)": "Chip min",
+              "Value #L (last)": "Chip avg",
+              "Value #L (lastNotNull)": "Chip avg",
+              "ip": "IP"
             }
           }
         }
@@ -1524,6 +2235,105 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "volt"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "id": 24,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "asic_miner_status_input_voltage{} / 100",
+          "instant": false,
+          "legendFormat": "{{ip}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Input voltage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -1537,6 +2347,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1576,7 +2387,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 25
+        "y": 41
       },
       "id": 8,
       "interval": "60",
@@ -1626,6 +2437,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -1639,6 +2451,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1678,17 +2491,17 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 33
+        "y": 49
       },
       "id": 10,
       "interval": "60",
       "options": {
         "legend": {
           "calcs": [
-            "lastNotNull",
-            "mean",
+            "last",
             "min",
-            "max"
+            "max",
+            "mean"
           ],
           "displayMode": "table",
           "placement": "bottom",
@@ -1731,7 +2544,9 @@
           },
           "custom": {
             "align": "auto",
-            "displayMode": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
             "inspect": false
           },
           "mappings": [],
@@ -1754,8 +2569,11 @@
             },
             "properties": [
               {
-                "id": "custom.displayMode",
-                "value": "color-background-solid"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
               },
               {
                 "id": "thresholds",
@@ -1763,7 +2581,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "green",
+                      "color": "dark-green",
                       "value": null
                     },
                     {
@@ -1798,8 +2616,11 @@
             },
             "properties": [
               {
-                "id": "custom.displayMode",
-                "value": "color-background-solid"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
               },
               {
                 "id": "thresholds",
@@ -1807,7 +2628,7 @@
                   "mode": "absolute",
                   "steps": [
                     {
-                      "color": "purple",
+                      "color": "dark-green",
                       "value": null
                     },
                     {
@@ -1842,8 +2663,11 @@
             },
             "properties": [
               {
-                "id": "custom.displayMode",
-                "value": "color-background-solid"
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
               },
               {
                 "id": "thresholds",
@@ -1881,11 +2705,13 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 61
       },
       "id": 16,
       "options": {
+        "cellHeight": "sm",
         "footer": {
+          "countRows": false,
           "fields": "",
           "reducer": [
             "sum"
@@ -1894,7 +2720,7 @@
         },
         "showHeader": true
       },
-      "pluginVersion": "9.2.3",
+      "pluginVersion": "10.2.2",
       "targets": [
         {
           "datasource": {
@@ -1944,28 +2770,24 @@
       "title": "Fans",
       "transformations": [
         {
-          "id": "merge",
-          "options": {}
-        },
-        {
           "id": "groupBy",
           "options": {
             "fields": {
               "Value #A": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #B": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #C": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
@@ -1975,6 +2797,10 @@
               }
             }
           }
+        },
+        {
+          "id": "merge",
+          "options": {}
         },
         {
           "id": "organize",
@@ -1992,8 +2818,11 @@
             "indexByName": {},
             "renameByName": {
               "Value": "inflow",
+              "Value #A (last)": "Inflow",
               "Value #A (lastNotNull)": "Inflow",
+              "Value #B (last)": "Outflow",
               "Value #B (lastNotNull)": "Outflow",
+              "Value #C (last)": "PSU",
               "Value #C (lastNotNull)": "PSU"
             }
           }
@@ -2012,6 +2841,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2025,6 +2855,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2063,7 +2894,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 52
+        "y": 68
       },
       "id": 18,
       "options": {
@@ -2141,7 +2972,9 @@
           },
           "custom": {
             "align": "auto",
-            "displayMode": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
             "inspect": false
           },
           "mappings": [],
@@ -2214,11 +3047,13 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 61
+        "y": 77
       },
       "id": 20,
       "options": {
+        "cellHeight": "sm",
         "footer": {
+          "countRows": false,
           "fields": "",
           "reducer": [
             "sum"
@@ -2228,7 +3063,7 @@
         "showHeader": true,
         "sortBy": []
       },
-      "pluginVersion": "9.2.3",
+      "pluginVersion": "10.2.2",
       "targets": [
         {
           "datasource": {
@@ -2278,10 +3113,6 @@
       "title": "Pool",
       "transformations": [
         {
-          "id": "merge",
-          "options": {}
-        },
-        {
           "id": "groupBy",
           "options": {
             "fields": {
@@ -2292,13 +3123,13 @@
               },
               "Value #B": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value #C": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
@@ -2308,24 +3139,28 @@
               },
               "status": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "url": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "user": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               }
             }
           }
+        },
+        {
+          "id": "merge",
+          "options": {}
         },
         {
           "id": "organize",
@@ -2339,10 +3174,15 @@
               "user (lastNotNull)": 3
             },
             "renameByName": {
+              "Value #B (last)": "Last share time",
               "Value #B (lastNotNull)": "Last share time",
+              "Value #C (last)": "Reject rate",
               "Value #C (lastNotNull)": "Reject rate",
+              "status (last)": "Status",
               "status (lastNotNull)": "Status",
+              "url (last)": "Url",
               "url (lastNotNull)": "Url",
+              "user (last)": "User",
               "user (lastNotNull)": "User"
             }
           }
@@ -2351,11 +3191,29 @@
       "type": "table"
     }
   ],
-  "schemaVersion": 37,
-  "style": "dark",
+  "refresh": "1m",
+  "schemaVersion": 38,
   "tags": [],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "f4c11dfe-fe6c-48c1-b126-cef92e0e1014"
+        },
+        "filters": [
+          {
+            "key": "location",
+            "operator": "=",
+            "value": "turlatovo"
+          }
+        ],
+        "hide": 0,
+        "name": "Filters",
+        "skipUrlSync": false,
+        "type": "adhoc"
+      }
+    ]
   },
   "time": {
     "from": "now-24h",
@@ -2365,6 +3223,6 @@
   "timezone": "",
   "title": "Asic monitor",
   "uid": "j5WYBx9Vk",
-  "version": 27,
+  "version": 44,
   "weekStart": ""
 }

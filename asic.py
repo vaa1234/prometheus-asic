@@ -1,217 +1,243 @@
 import os
-from os.path import exists
 import time
 import prometheus_client
 import asyncio # asyncio for handling the async part
 from pyasic.network import MinerNetwork # miner network handles the scanning
 from datetime import datetime
 
-METRICS = {}
-metric_prefix = 'asic_'
+class AppMetrics:
+    """
+    Representation of Prometheus metrics and loop to fetch and transform
+    pyasic data into Prometheus metrics.
+    """
 
-async def get_miners_data(ip_range: str):
-    # Define network range to be used for scanning
-    # This can take a list of IPs, a constructor string, or an IP and subnet mask
-    network = MinerNetwork(ip_range)
+    def __init__(self, refresh_interval, asic_networks):
+        self.refresh_interval = refresh_interval
+        self.asic_networks = asic_networks
+        self.data = {}
+        self.alive_miner_ips = []
+        self.metric_prefix = 'asic_'
+        self.metrics = {}
 
-    # Scan the network for miners
-    # This function returns a list of miners of the correct type as a class
-    miners = await network.scan_network_for_miners()
 
-    miners_ips = [miner.ip for miner in miners]
+    def parse_asic_networks(self, asic_networks):
+        '''
+        Parse ASIC_NETWORKS os environ and return dict with asic localtion name and IP range for later scanning
 
-    # grabbing data by separate category in parallel
-    miner_info = await asyncio.gather(*[miner.api.get_miner_info() for miner in miners])
-    devdetails = await asyncio.gather(*[miner.api.devdetails() for miner in miners])
-    devs = await asyncio.gather(*[miner.api.devs() for miner in miners])
-    error_code = await asyncio.gather(*[miner.api.get_error_code() for miner in miners])
-    summary = await asyncio.gather(*[miner.api.summary() for miner in miners])
-    status = await asyncio.gather(*[miner.api.status() for miner in miners])
-    psu = await asyncio.gather(*[miner.api.get_psu() for miner in miners])
-    pools = await asyncio.gather(*[miner.api.pools() for miner in miners])
-
-    # create full dataset from grabed data, miner ip is primary key
-    data = dict.fromkeys(miners_ips, {})
-
-    for index, (key, value) in enumerate(data.items()):
-        # add first category to emtpy dict
-        # not work via update method
-        data[key] = {'miner_info': miner_info[index]}
-
-    for index, (key, value) in enumerate(data.items()):
-        # add second and other categories via update
-        data[key].update({'devdetails': devdetails[index]})
-
-    for index, (key, value) in enumerate(data.items()):
-        data[key].update({'devs': devs[index]})
-
-    for index, (key, value) in enumerate(data.items()):
-        data[key].update({'error_code': error_code[index]})
-
-    for index, (key, value) in enumerate(data.items()):
-        data[key].update({'summary': summary[index]})
-
-    for index, (key, value) in enumerate(data.items()):
-        data[key].update({'status': status[index]})
-
-    for index, (key, value) in enumerate(data.items()):
-        data[key].update({'psu': psu[index]})
-
-    for index, (key, value) in enumerate(data.items()):
-        data[key].update({'pools': pools[index]})
-
-    return data
+        asic_networks may two format variations:
+        1. ip_range. Location name will be add as 'default'. For example 192.168.0.1, by default mask is /24
+        2. splited 'location_name1:ip_range1, location_name2:ip_range2, ...'
+        '''
         
+        asic_location_and_iprange = {}
 
-async def collect(ip_range):
-    # grab all miners data
-    data = await get_miners_data(ip_range)
+        # split if two or more ranges defined
+        for asic_network in list(asic_networks.replace(' ', '').split(',')):
 
-    # parse and add metrics for data
-    for asic_ip, properties in data.items():
-
-        ### miner info block ###
-        base_labels = {'ip': asic_ip,
-                       'mac': properties['miner_info']['Msg']['mac'],
-                       'model_name': properties['devdetails']['DEVDETAILS'][0]['Model'],
-                       'serial_number': properties['miner_info']['Msg']['minersn'],
-                       'firmware_version': properties['status']['Msg']['FirmwareVersion']}
-        
-        add_metric('miner_info', base_labels, 1)
-
-        ### miner status block ###
-        # if some hashboard return not alive status then break from cycle
-        while True:
-            if properties['devs']['DEVS'][0]['Status'] != 'Alive':
-                miner_status = properties['devs']['DEVS'][0]['Status']
-                break
-            elif properties['devs']['DEVS'][1]['Status'] != 'Alive':
-                miner_status = properties['devs']['DEVS'][1]['Status']
-                break
-            elif properties['devs']['DEVS'][2]['Status'] != 'Alive':
-                miner_status = properties['devs']['DEVS'][2]['Status']
-                break
+            if ':' not in asic_network:
+                asic_location_and_iprange['default'] = asic_network
             else:
-                miner_status = 'Alive'
-                break
-        
-        # concatenate two dicts
-        status_labels = base_labels | \
-                        {'power_mode': properties['summary']['SUMMARY'][0]['Power Mode'],
-                        'error_code': str(properties['error_code']['Msg']['error_code']),
-                        'status': miner_status
-                        }
-        
-        miner_status_uptime = properties['summary']['SUMMARY'][0]['Uptime']
-        miner_status_elapsed_time = properties['summary']['SUMMARY'][0]['Elapsed']
+                asic_localtion, iprange = asic_network.split(':')
+                asic_location_and_iprange[asic_localtion] = iprange
 
-        # upfreq property in status section missing on some miners
-        # we need check upfreq complete property on each hashboard
-        miner_status_upfreq = properties['devs']['DEVS'][0]['Upfreq Complete'] and \
-                                properties['devs']['DEVS'][1]['Upfreq Complete'] and \
-                                properties['devs']['DEVS'][2]['Upfreq Complete']
-        
-        miner_status_ths_rt = round(properties['summary']['SUMMARY'][0]['HS RT'] / 1000000, 2)
-        miner_status_power = properties['summary']['SUMMARY'][0]['Power']
-        miner_status_power_limit = properties['summary']['SUMMARY'][0]['Power Limit']
-        miner_status_efficiency = (miner_status_power / miner_status_ths_rt) if miner_status_ths_rt > 0 else 0
-        miner_status_input_voltage = int(properties['psu']['Msg']['vin']) / 100
+        return asic_location_and_iprange
 
-        add_metric('miner_status', status_labels, 1) 
-        add_metric('miner_status_upfreq', base_labels, miner_status_upfreq)
-        add_metric('miner_status_ths_rt', base_labels, miner_status_ths_rt)
-        add_metric('miner_status_power', base_labels, miner_status_power)
-        add_metric('miner_status_power_limit', base_labels, miner_status_power_limit)
-        add_metric('miner_status_efficiency', base_labels, miner_status_efficiency)
-        add_metric('miner_status_input_voltage', base_labels, miner_status_input_voltage)
-        add_metric('miner_status_uptime', base_labels, miner_status_uptime)
-        add_metric('miner_status_elapsed_time', base_labels, miner_status_elapsed_time)
 
-        ### miber temperature block ###
-        miner_temperature_env_temperature = properties['summary']['SUMMARY'][0]['Env Temp']
-        miner_temperature_avg_temperature = properties['summary']['SUMMARY'][0]['Temperature']
-        miner_temperature_psu_temperature = properties['psu']['Msg']['temp0']
-        miner_temperature_left_board_temperature = properties['devs']['DEVS'][0]['Temperature']
-        miner_temperature_left_board_chip_avg_temperature = properties['devs']['DEVS'][0]['Chip Temp Avg']
-        miner_temperature_center_board_temperature = properties['devs']['DEVS'][1]['Temperature']
-        miner_temperature_center_board_chip_avg_temperature = properties['devs']['DEVS'][1]['Chip Temp Avg']
-        miner_temperature_right_board_temperature = properties['devs']['DEVS'][2]['Temperature']
-        miner_temperature_right_board_chip_avg_temperature = properties['devs']['DEVS'][2]['Chip Temp Avg']
-        miner_temperature_chip_min = properties['summary']['SUMMARY'][0]['Chip Temp Min']
-        miner_temperature_chip_max = properties['summary']['SUMMARY'][0]['Chip Temp Max']
-        miner_temperature_chip_avg = properties['summary']['SUMMARY'][0]['Chip Temp Avg']
-
-        add_metric('miner_temperature_env_temperature', base_labels, miner_temperature_env_temperature)
-        add_metric('miner_temperature_avg_temperature', base_labels, miner_temperature_avg_temperature)
-        add_metric('miner_temperature_psu_temperature', base_labels, miner_temperature_psu_temperature)
-        add_metric('miner_temperature_left_board_temperature', base_labels, miner_temperature_left_board_temperature)
-        add_metric('miner_temperature_left_board_chip_avg_temperature', base_labels, miner_temperature_left_board_chip_avg_temperature)
-        add_metric('miner_temperature_center_board_temperature', base_labels, miner_temperature_center_board_temperature)
-        add_metric('miner_temperature_center_board_avg_chip_temperature', base_labels, miner_temperature_center_board_chip_avg_temperature)
-        add_metric('miner_temperature_right_board_temperature', base_labels, miner_temperature_right_board_temperature)
-        add_metric('miner_temperature_right_board_avg_chip_temperature', base_labels, miner_temperature_right_board_chip_avg_temperature)
-        add_metric('miner_temperature_chip_min', base_labels, miner_temperature_chip_min)
-        add_metric('miner_temperature_chip_max', base_labels, miner_temperature_chip_max)
-        add_metric('miner_temperature_chip_avg', base_labels, miner_temperature_chip_avg)
-
-        ### miner fans block ###
-        miner_fans_fan_speed_in = properties['summary']['SUMMARY'][0]['Fan Speed In']
-        miner_fans_fan_speed_out = properties['summary']['SUMMARY'][0]['Fan Speed Out']
-        miner_fans_psu_fan_speed = properties['psu']['Msg']['fan_speed']
-
-        add_metric('miner_fans_fan_speed_in', base_labels, miner_fans_fan_speed_in)
-        add_metric('miner_fans_fan_speed_out', base_labels, miner_fans_fan_speed_out)
-        add_metric('miner_fans_psu_fan_speed', base_labels, miner_fans_psu_fan_speed)
-
-        ### pool status block ###
-        pool_labels = base_labels | {'url': properties['pools']['POOLS'][0]['URL'],
-                       'status': properties['pools']['POOLS'][0]['Status'],
-                       'user': properties['pools']['POOLS'][0]['User'],
-                       }
-
-        pool_status_last_share_time = properties['pools']['POOLS'][0]['Last Share Time']
-        pool_status_reject_rate = properties['pools']['POOLS'][0]['Pool Rejected%']
-
-        add_metric('pool_status', pool_labels, 1)
-        add_metric('pool_status_last_share_time', base_labels, pool_status_last_share_time)
-        add_metric('pool_status_reject_rate', base_labels, pool_status_reject_rate)
-        
-
-def add_metric(name, labels, value):
-    '''
-    Export metric to prometheus client or generate exception
+    def add_or_update_metric(self, name, labels, value):
+        '''
+        Export metric to prometheus client or generate exception
 
         Parameters:
             name (str): metric name
             labels (dict): metric labels, keys are label names, values are label values
             value (int or str): metric value
-    '''
-    global METRICS
+        '''
+        
+        try:
+            # Metric name in lower case
+            name = self.metric_prefix + name.replace('-', '_').replace(' ', '_').replace('.', '').replace('/', '_').lower()
+            label_names = list(labels.keys())
+            label_values = labels.values()
 
-    try:
-        # Metric name in lower case
-        metric = metric_prefix + name.replace('-', '_').replace(' ', '_').replace('.', '').replace('/', '_').lower()
-        label_names = list(labels.keys())
-        label_values = labels.values()
+            # Create metric if it does not exist
+            if name not in self.metrics:
+                print('{} Add metric {}'.format(datetime.now(), name))
+                metric_desc = name.replace('_', ' ')
+                self.metrics[name] = prometheus_client.Gauge(name, metric_desc, label_names)
 
-        # Create metric if it does not exist
-        if metric not in METRICS:
-            print('add metric {}'.format(metric))
-            desc = name.replace('_', ' ')
-            METRICS[metric] = prometheus_client.Gauge(metric, f'({value}) {desc}', label_names)
+            # if exist check availability
+            # if some miners from previous scan are offline and then remove metric and set availability variable to 0 (Offline)
+            if labels['ip'] not in self.alive_miner_ips:
 
-        # Update metric
-        METRICS[metric].labels(*label_values).set(value)
+                if name == self.metric_prefix + 'miner_info': # don't erase or update miner_info metric
+                    pass
+                
+                elif name == self.metric_prefix + 'miner_availability':
+                    print('{} Set available status to Offline for metric {}, label_values: {}, value: {}'.format(datetime.now(), name, label_values, 0))
+                    print('{} Metric: '.format(datetime.now()), self.metrics[name])
+                    self.metrics[name].labels(*label_values).set(0)
+                else:
+                    print('{} Remove metric {}, label_values: {}'.format(datetime.now(), name, label_values))
+                    self.metrics[name].remove(*label_values)
+            else:
+                self.metrics[name].labels(*label_values).set(value)
+            
+        except Exception as e:
+            print('{} Error updating metric {}, label_values: {}, value: {}'.format(datetime.now(), name, label_values, value))
+            print('{} Exception: {}'.format(datetime.now(), str(e)))
+            pass
+        
 
-    except Exception as e:
-        print('Exception:', e)
-        pass
+    async def run_metrics_loop(self):
+        """Metrics fetching loop"""
+        asics = self.parse_asic_networks(self.asic_networks)
+
+        while True:
+            for location_name, ip_range in asics.items():
+                await self.collect(location_name, ip_range)
+                time.sleep(self.refresh_interval)
+
+
+    async def collect(self, location_name, ip_range):
+        """
+        Scan defined network for miners, get and parse data, export it as prometheus metrics
+        """
+
+        ### Scan IP range and store data
+        # important: scan_network_for_miners() work with version below 0.39.4
+        # pyasic above this version dont work with time.sleep() construction for unknown reason
+        # data fetched only once, on second iteration loop freezes during re-scan ip range via scan_network_for_miners()
+        network = MinerNetwork(ip_range)
+        miners = await network.scan_network_for_miners() # scan the network for miners
+        
+        self.alive_miner_ips = [miner.ip for miner in miners]
+
+        # grabbing data by separate category in parallel
+        miner_info = await asyncio.gather(*[miner.api.get_miner_info() for miner in miners])
+        devdetails = await asyncio.gather(*[miner.api.devdetails() for miner in miners])
+        devs = await asyncio.gather(*[miner.api.devs() for miner in miners])
+        error_code = await asyncio.gather(*[miner.api.get_error_code() for miner in miners])
+        summary = await asyncio.gather(*[miner.api.summary() for miner in miners])
+        status = await asyncio.gather(*[miner.api.status() for miner in miners])
+        psu = await asyncio.gather(*[miner.api.get_psu() for miner in miners])
+        pools = await asyncio.gather(*[miner.api.pools() for miner in miners])
+
+        # create self.data dict, miner ip is primary key
+        for index, value in enumerate(self.alive_miner_ips):
+            # add first category to emtpy dict
+            # not work via update method
+            self.data[value] = {'miner_info': miner_info[index]}
+
+        for index, value in enumerate(self.alive_miner_ips):
+            # add second and other categories via update
+            self.data[value].update({'devdetails': devdetails[index]})
+
+        for index, value in enumerate(self.alive_miner_ips):
+            self.data[value].update({'devs': devs[index]})
+
+        for index, value in enumerate(self.alive_miner_ips):
+            self.data[value].update({'error_code': error_code[index]})
+
+        for index, value in enumerate(self.alive_miner_ips):
+            self.data[value].update({'summary': summary[index]})
+
+        for index, value in enumerate(self.alive_miner_ips):
+            self.data[value].update({'status': status[index]})
+
+        for index, value in enumerate(self.alive_miner_ips):
+            self.data[value].update({'psu': psu[index]})
+
+        for index, value in enumerate(self.alive_miner_ips):
+            self.data[value].update({'pools': pools[index]})
+
+        # set availability variable to online
+        for index, value in enumerate(self.alive_miner_ips):
+            self.data[value].update({'availability': 1})
+
+        for index, value in enumerate(self.alive_miner_ips):
+            self.data[value].update({'location_name': location_name})
+
+        ### Parse data and update prometheus metrics
+        for asic_ip, properties in self.data.items():
+            
+            ### miner info block ###
+            base_labels = {'ip': asic_ip, 'location': properties['location_name']}
+
+            self.add_or_update_metric('miner_availability', base_labels, properties['availability'])
+            
+            miner_info_labels = base_labels | {'mac': properties['miner_info']['Msg']['mac'],
+                                               'model_name': properties['devdetails']['DEVDETAILS'][0]['Model'],
+                                               'serial_number': properties['miner_info']['Msg']['minersn'],
+                                               'firmware_version': properties['status']['Msg']['FirmwareVersion']
+                                               }
+            self.add_or_update_metric('miner_info', miner_info_labels, 1)
+
+            ### miner status block ###
+            # if some hashboard return not alive status then break from cycle
+            while True:
+                if properties['devs']['DEVS'][0]['Status'] != 'Alive':
+                    miner_status = properties['devs']['DEVS'][0]['Status']
+                    break
+                elif properties['devs']['DEVS'][1]['Status'] != 'Alive':
+                    miner_status = properties['devs']['DEVS'][1]['Status']
+                    break
+                elif properties['devs']['DEVS'][2]['Status'] != 'Alive':
+                    miner_status = properties['devs']['DEVS'][2]['Status']
+                    break
+                else:
+                    miner_status = 'Alive'
+                    break
+            
+            # concatenate two dicts
+            status_labels = base_labels | \
+                            {'power_mode': properties['summary']['SUMMARY'][0]['Power Mode'],
+                            'error_code': str(properties['error_code']['Msg']['error_code']),
+                            'status': miner_status
+                            }
+
+            self.add_or_update_metric('miner_status', status_labels, 1) 
+            # upfreq property in status section missing on some miners, we need check upfreq complete property on each hashboard
+            self.add_or_update_metric('miner_status_upfreq', base_labels, properties['devs']['DEVS'][0]['Upfreq Complete'] and \
+                                                                    properties['devs']['DEVS'][1]['Upfreq Complete'] and \
+                                                                    properties['devs']['DEVS'][2]['Upfreq Complete'])
+            self.add_or_update_metric('miner_status_ths_rt', base_labels, properties['summary']['SUMMARY'][0]['HS RT'])
+            self.add_or_update_metric('miner_status_power', base_labels, properties['summary']['SUMMARY'][0]['Power'])
+            self.add_or_update_metric('miner_status_power_limit', base_labels, properties['summary']['SUMMARY'][0]['Power Limit'])
+            self.add_or_update_metric('miner_status_input_voltage', base_labels, properties['psu']['Msg']['vin'])
+            self.add_or_update_metric('miner_status_uptime', base_labels, properties['summary']['SUMMARY'][0]['Uptime'])
+            self.add_or_update_metric('miner_status_elapsed_time', base_labels, properties['summary']['SUMMARY'][0]['Elapsed'])
+
+            ### miner temperature block ###
+            self.add_or_update_metric('miner_temperature_env_temperature', base_labels, properties['summary']['SUMMARY'][0]['Env Temp'])
+            self.add_or_update_metric('miner_temperature_avg_temperature', base_labels, properties['summary']['SUMMARY'][0]['Temperature'])
+            self.add_or_update_metric('miner_temperature_psu_temperature', base_labels, properties['psu']['Msg']['temp0'])
+            self.add_or_update_metric('miner_temperature_left_board_temperature', base_labels, properties['devs']['DEVS'][0]['Temperature'])
+            self.add_or_update_metric('miner_temperature_left_board_chip_avg_temperature', base_labels, properties['devs']['DEVS'][0]['Chip Temp Avg'])
+            self.add_or_update_metric('miner_temperature_center_board_temperature', base_labels, properties['devs']['DEVS'][1]['Temperature'])
+            self.add_or_update_metric('miner_temperature_center_board_avg_chip_temperature', base_labels, properties['devs']['DEVS'][1]['Chip Temp Avg'])
+            self.add_or_update_metric('miner_temperature_right_board_temperature', base_labels, properties['devs']['DEVS'][2]['Temperature'])
+            self.add_or_update_metric('miner_temperature_right_board_avg_chip_temperature', base_labels, properties['devs']['DEVS'][2]['Chip Temp Avg'])
+            self.add_or_update_metric('miner_temperature_chip_min', base_labels, properties['summary']['SUMMARY'][0]['Chip Temp Min'])
+            self.add_or_update_metric('miner_temperature_chip_max', base_labels, properties['summary']['SUMMARY'][0]['Chip Temp Max'])
+            self.add_or_update_metric('miner_temperature_chip_avg', base_labels, properties['summary']['SUMMARY'][0]['Chip Temp Avg'])
+
+            ### miner fans block ###
+            self.add_or_update_metric('miner_fans_fan_speed_in', base_labels, properties['summary']['SUMMARY'][0]['Fan Speed In'])
+            self.add_or_update_metric('miner_fans_fan_speed_out', base_labels, properties['summary']['SUMMARY'][0]['Fan Speed Out'])
+            self.add_or_update_metric('miner_fans_psu_fan_speed', base_labels, properties['psu']['Msg']['fan_speed'])
+
+            ### pool status block ###
+            pool_labels = base_labels | {'url': properties['pools']['POOLS'][0]['URL'],
+                        'status': properties['pools']['POOLS'][0]['Status'],
+                        'user': properties['pools']['POOLS'][0]['User'],
+                        }
+
+            self.add_or_update_metric('pool_status', pool_labels, 1)
+            self.add_or_update_metric('pool_status_last_share_time', base_labels, properties['pools']['POOLS'][0]['Last Share Time'])
+            self.add_or_update_metric('pool_status_reject_rate', base_labels, properties['pools']['POOLS'][0]['Pool Rejected%'])
 
 
 async def main():
-    """
-    Starts a server and exposes the metrics
-    """
 
     # Validate configuration
     exporter_address = os.environ.get("ASIC_EXPORTER_ADDRESS", "0.0.0.0")
@@ -222,18 +248,20 @@ async def main():
         """base class for new exception"""
         pass
 
-    if not os.environ.get("ASIC_IP_RANGE"):
-        raise UnconfiguredEnvironment('ASIC_IP_RANGE environ variable must be set')
+    if not os.environ.get("ASIC_NETWORKS"):
+        raise UnconfiguredEnvironment('ASIC_NETWORKS environ variable must be set')
 
-    ip_range = os.environ.get("ASIC_IP_RANGE")
+    asic_networks = os.environ.get("ASIC_NETWORKS")
+
+    app_metrics = AppMetrics(
+        refresh_interval=refresh_interval,
+        asic_networks=asic_networks,
+    )
 
     # Start Prometheus server
     prometheus_client.start_http_server(exporter_port, exporter_address)
-    print(f"Server listening in http://{exporter_address}:{exporter_port}/metrics")
-
-    while True:
-        await collect(ip_range)
-        time.sleep(refresh_interval)
+    print("{} Server listening in http://{}:{}/metrics".format(datetime.now(), exporter_address, exporter_port))
+    await app_metrics.run_metrics_loop()
 
 
 if __name__ == '__main__':

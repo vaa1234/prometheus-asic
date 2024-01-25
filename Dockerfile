@@ -1,8 +1,8 @@
-FROM python:3.10-alpine3.16
+FROM python:3.11-alpine3.16
 
 WORKDIR /usr/src
 
-RUN pip install prometheus_client pyasic \
+RUN pip install prometheus_client pyasic==0.39.4 \
     # remove temporary files
     && rm -rf /root/.cache/ \
     && find / -name '*.pyc' -delete
@@ -13,4 +13,4 @@ EXPOSE 9904
 ENTRYPOINT ["/usr/local/bin/python", "-u", "/asic.py"]
 
 # HELP
-# docker build -t vaa12345/prometheus-asic:0.1 .
+# docker build -t vaa12345/prometheus-asic:0.2 .
