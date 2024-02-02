@@ -4,6 +4,7 @@ import prometheus_client
 import asyncio # asyncio for handling the async part
 from pyasic.network import MinerNetwork # miner network handles the scanning
 from datetime import datetime
+import ipaddress
 
 class AppMetrics:
     """
@@ -90,24 +91,37 @@ class AppMetrics:
 
     async def run_metrics_loop(self):
         """Metrics fetching loop"""
-        asics = self.parse_asic_networks(self.asic_networks)
 
+        self.asic_networks = self.parse_asic_networks(self.asic_networks)
+        
         while True:
-            for location_name, ip_range in asics.items():
-                await self.collect(location_name, ip_range)
-                time.sleep(self.refresh_interval)
+            await self.collect()
+            time.sleep(self.refresh_interval)
 
+            
+    def get_location_by_ip(self, ip):
+        
+        for location_name, ip_range in self.asic_networks.items():
 
-    async def collect(self, location_name, ip_range):
+            if ipaddress.ip_address(ip) in ipaddress.ip_network(ip_range):
+
+                return location_name
+        
+
+    async def collect(self):
         """
         Scan defined network for miners, get and parse data, export it as prometheus metrics
         """
-
         ### Scan IP range and store data
         # important: scan_network_for_miners() work with version below 0.39.4
         # pyasic above this version dont work with time.sleep() construction for unknown reason
         # data fetched only once, on second iteration loop freezes during re-scan ip range via scan_network_for_miners()
-        network = MinerNetwork(ip_range)
+
+        asic_ips = []
+        for ip_range in list(self.asic_networks.values()):
+            asic_ips += (list(ipaddress.ip_network(ip_range).hosts()))
+
+        network = MinerNetwork(asic_ips)
         miners = await network.scan_network_for_miners() # scan the network for miners
         
         self.alive_miner_ips = [miner.ip for miner in miners]
@@ -155,7 +169,7 @@ class AppMetrics:
             self.data[value].update({'availability': 1})
 
         for index, value in enumerate(self.alive_miner_ips):
-            self.data[value].update({'location_name': location_name})
+            self.data[value].update({'location_name': self.get_location_by_ip(value)})
 
         ### Parse data and update prometheus metrics
         for asic_ip, properties in self.data.items():
